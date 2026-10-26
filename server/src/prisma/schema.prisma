@@ -1,0 +1,103 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "rhel-openssl-1.0.x"]
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  books Book[]
+
+  @@map("categories")
+}
+
+model Author {
+  id        Int          @id @default(autoincrement())
+  firstName String       @map("first_name")
+  lastName  String       @map("last_name")
+  books     BookAuthor[]
+
+  @@map("authors")
+}
+
+model Book {
+  id              Int          @id @default(autoincrement())
+  isbn            String       @unique
+  title           String
+  categoryId      Int          @map("category_id")
+  publicationYear Int?         @map("publication_year")
+  edition         String?
+  category        Category     @relation(fields: [categoryId], references: [id])
+  authors         BookAuthor[]
+  copies          BookCopy[]
+
+  @@map("books")
+}
+
+model BookAuthor {
+  bookId   Int    @map("book_id")
+  authorId Int    @map("author_id")
+  book     Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@id([bookId, authorId])
+  @@map("book_authors")
+}
+
+model BookCopy {
+  id            Int            @id @default(autoincrement())
+  bookId        Int            @map("book_id")
+  barcode       String         @unique
+  status        String         @default("AVAILABLE")
+  shelfLocation String?        @map("shelf_location")
+  book          Book           @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  borrowRecords BorrowRecord[]
+
+  @@map("book_copies")
+}
+
+model Member {
+  id               Int            @id @default(autoincrement())
+  membershipNumber String         @unique @map("membership_number")
+  name             String
+  email            String         @unique
+  phone            String?
+  memberType       String         @default("STANDARD") @map("member_type")
+  maxAllowed       Int            @default(3) @map("max_books_allowed")
+  isActive         Boolean        @default(true) @map("is_active")
+  joinDate         DateTime       @default(now()) @map("join_date")
+  borrowRecords    BorrowRecord[]
+
+  @@map("members")
+}
+
+model BorrowRecord {
+  id         Int        @id @default(autoincrement())
+  copyId     Int        @map("copy_id")
+  memberId   Int        @map("member_id")
+  issueDate  DateTime   @default(now()) @map("issue_date")
+  dueDate    DateTime   @map("due_date")
+  returnDate DateTime?  @map("return_date")
+  copy       BookCopy   @relation(fields: [copyId], references: [id])
+  member     Member     @relation(fields: [memberId], references: [id])
+  fine       Fine?
+
+  @@map("borrow_records")
+}
+
+model Fine {
+  id             Int          @id @default(autoincrement())
+  borrowRecordId Int          @unique @map("borrow_record_id")
+  amount         Float
+  status         String       @default("UNPAID")
+  paidAt         DateTime?    @map("paid_at")
+  borrowRecord   BorrowRecord @relation(fields: [borrowRecordId], references: [id])
+
+  @@map("fines")
+}

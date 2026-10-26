@@ -18,12 +18,45 @@ import adminCopiesRouter from './routes/admin.copies.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config();
 dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+
+// ---------- Health & Root Endpoints ----------
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    name: 'Library Management System API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      books: '/api/books',
+      members: '/api/members',
+      copies: '/api/copies',
+      borrows: '/api/borrows/active',
+    },
+  });
+});
+
+app.get('/api', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Library Management System API is live and operational',
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
 
 // ---------- Auth Routes ----------
 app.use('/api/auth', authRouter);
@@ -47,4 +80,8 @@ app.use('/api/admin/copies', adminCopiesRouter);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+}
+
+export default app;
